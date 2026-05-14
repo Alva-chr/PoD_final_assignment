@@ -4,7 +4,7 @@ BINS = malaria
 
 all: $(BINS)
 
-malaria: malaria.c
+malaria: malaria.c prop.h
 	$(CC) $(CFLAGS) -o $@ malaria.c
 
 clean:

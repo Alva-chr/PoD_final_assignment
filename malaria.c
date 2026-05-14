@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdio.h>
+#include "prop.h"
 
 
 int main(int argc, char **argv) {
@@ -27,16 +28,20 @@ int main(int argc, char **argv) {
     }
 
     int n = N/size; //simulations run per process
-    double x0 = [900, 900, 30, 330, 50, 270, 20];
-    double w = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+    int x0 = [900, 900, 30, 330, 50, 270, 20];
+    int x = [0, 0, 0, 0, 0, 0, 0];
+    double w = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     int* process_memory = malloc((7*n)*sizeof(double));
+    int collected_data = malloc((7*n*size)*sizeof(double)); // for collecting the data in the end
     int simulations_done = 0;
 
     //running all the simulations
     while(simulations_done < n){
+
+        memcpy(&x, &x0, 7*sizeof(int));
         //One simulation run
         for(t=0; t<T; t ++){
-
+            
         }
 
     }
