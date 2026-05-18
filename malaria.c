@@ -1,23 +1,46 @@
 #include <string.h>
 #include <stdio.h>
+#include <mpi.h>
 #include <stdlib.h>
 #include <math.h>
 #include "prop.h"
 
+//modified from precvius assignments
+int write_output(char *file_name, const int *output, int num_values) {
+	FILE *file;
+	if (NULL == (file = fopen(file_name, "w"))) {
+		perror("Couldn't open output file");
+		return -1;
+	}
+	for (int i = 0; i < num_values; i++) {
+		if (0 > fprintf(file, "%.4d ", output[i])) {
+			perror("Couldn't write to output file");
+		}
+	}
+	if (0 > fprintf(file, "\n")) {
+		perror("Couldn't write to output file");
+	}
+	if (0 != fclose(file)) {
+		perror("Warning: couldn't close output file");
+	}
+	return 0;
+}
+
 
 int main(int argc, char **argv) {
 
-	if (2 != argc) {
-		printf("Usage: total number of simulations run\n");
+	if (3 != argc) {
+		printf("Usage: total number of simulations run | output file name\n");
 		return 1;
 	}
     int N = atoi(argv[1]); //total number of process simulations to run
+	char *output_name = argv[2];
 
-    int T = 100; //Timesteps simulation will take
-    int t = 0; //start time
+
+    double T = 100; //Timesteps simulation will take
+    double t = 0; //start time
 
 	int rank, size;
-	MPI_Status status;
 
 	//Setting up MPI
 	MPI_Init(&argc, &argv);
@@ -30,26 +53,22 @@ int main(int argc, char **argv) {
     }
 
     int n = N/size; //simulations run per process
-    int x0 = [900, 900, 30, 330, 50, 270, 20];
+    int x0[7] = {900, 900, 30, 330, 50, 270, 20};
     int x[7] = {0};
     double w[15] = {0};
     int* process_memory = malloc((7*n)*sizeof(double));
-    int* collected_data = malloc(20*sizeof(int)); // for collecting the data in the end
 
     int simulations_done = 0;
-
-	//for time taking
-	int T = 100;
-	int t = 0;
 
 	//for random variables
 	double u1, u2;
 	double tau; //timestep
 	double a0u2;
-	double r;
+	int r = 7;
+	int idx;
 
 
-	double a0 = 0
+	double a0 = 0;
 
 	int i;
 
@@ -82,10 +101,10 @@ int main(int argc, char **argv) {
         //One simulation run
         while(t<T){
 			//Step one in SSA
-			w = prop(&x,&w);
+			prop(x,w);
             
 			//Step 2 in SSA
-			for(i=0, i <15, i++){
+			for(i=0; i <15; i++){
 				a0 += w[i];
 			}
 
@@ -115,8 +134,8 @@ int main(int argc, char **argv) {
 
 		//saving the data in each process 
 		for(i = 0; i <7;i++){
-			int idx = 7*simulations_done + i;
-			process_memory[idx] = x[i]
+			idx = 7*simulations_done + i;
+			process_memory[idx] = x[i];
 		}
 
 		simulations_done +=1;
@@ -125,7 +144,7 @@ int main(int argc, char **argv) {
 	//Collecting only the relevant data
 	int local_max_X = 0;
 	int array_max_X[size];
-	int global_max_X = NULL;
+	int global_max_X;
 	int *all_X0 = malloc(n*sizeof(int)); 
 	for(i = 0; i<n; i++){
 		idx = 7*i;
@@ -138,7 +157,7 @@ int main(int argc, char **argv) {
 
 	//Need to determine global max of X so all the proccess have
 	//the same size for the bins
-	MPI_Gather(&local_maxX, 1, MPI_INT, &array_max_X,1, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Gather(&local_max_X, 1, MPI_INT, &array_max_X,1, MPI_INT, 0, MPI_COMM_WORLD);
 
 	//finding the global max X on root
 	if(rank == 0){
@@ -170,25 +189,13 @@ int main(int argc, char **argv) {
 	MPI_Reduce(local_bins, global_bins, 20, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
 
+	if(rank == 0){
+		write_output(output_name, global_bins, 20);
+	}
 
+	MPI_Finalize();
+
+	free(process_memory);
+	free(all_X0);
 }
 
-int write_output(char *file_name, const double *output, int num_values) {
-	FILE *file;
-	if (NULL == (file = fopen(file_name, "w"))) {
-		perror("Couldn't open output file");
-		return -1;
-	}
-	for (int i = 0; i < num_values; i++) {
-		if (0 > fprintf(file, "%.4f ", output[i])) {
-			perror("Couldn't write to output file");
-		}
-	}
-	if (0 > fprintf(file, "\n")) {
-		perror("Couldn't write to output file");
-	}
-	if (0 != fclose(file)) {
-		perror("Warning: couldn't close output file");
-	}
-	return 0;
-}
