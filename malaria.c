@@ -1,5 +1,7 @@
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
 #include "prop.h"
 
 
@@ -35,53 +37,83 @@ int main(int argc, char **argv) {
     int collected_data = malloc((7*n*size)*sizeof(double)); // for collecting the data in the end
     int simulations_done = 0;
 
+	//for time taking
+	int T = 100;
+	int t = 0;
+
+	//for random variables
+	double u1, u2;
+	double tau; //timestep
+	double a0u2;
+	double r;
+
+
+	double a0 = 0
+
+	int i;
+
+	int P[15][7] = {
+		{ 1,  0,  0,  0,  0,  0,  0},
+		{-1,  0,  0,  0,  0,  0,  0},
+		{-1,  0,  1,  0,  0,  0,  0},
+		{ 0,  1,  0,  0,  0,  0,  0},
+		{ 0, -1,  0,  0,  0,  0,  0},
+		{ 0, -1,  0,  1,  0,  0,  0},
+		{ 0,  0, -1,  0,  0,  0,  0},
+		{ 0,  0, -1,  0,  1,  0,  0},
+		{ 0,  0,  0, -1,  0,  0,  0},
+		{ 0,  0,  0, -1,  0,  0,  0},
+		{ 1,  0,  0,  0, -1,  0,  0},
+		{ 0,  0,  0,  0, -1,  0,  1},
+		{ 0,  0,  0,  0,  0, -1,  0},
+		{ 1,  0,  0,  0,  0,  0, -1},
+		{ 0,  0,  0,  0,  0,  0, -1}
+	};
+
     //running all the simulations
     while(simulations_done < n){
 
+		//resetting simulation
         memcpy(&x, &x0, 7*sizeof(int));
+		a0 = 0;
+
+		//time simulations
         //One simulation run
-        for(t=0; t<T; t ++){
+        while(t<T){
+			//Step one in SSA
+			w = prop(&x,&w);
             
+			//Step 2 in SSA
+			for(i=0, i <15, i++){
+				a0 += w[i];
+			}
+
+			//Step 3 in SSA
+			u1 = (double)rand()/((double)RAND_MAX);
+			u2 = (double)rand()/((double)RAND_MAX);
+
+			//Step 4 in SSA
+			tau = -1*log(u1)/a0;
+
+			//step 5 in SSA
+			a0u2 = a0*u2;
+			for(i = 1; i <15;i++){
+				if(w[i-1] < a0*u2 && a0u2 <= w[i]){
+					r = i;
+				}
+			}
+
+			//step 5 in SSA
+			for(i = 0;i <7;i++){
+				x[i] += P[r][i];
+			}
+
+			//step 6 in SSA
+			t += tau;
         }
-
+		simulations_done +=1;
     }
-
-
-
-
-
-
-	
 }
-
-
-int read_input(const char *file_name, double **values) {
-	FILE *file;
-	if (NULL == (file = fopen(file_name, "r"))) {
-		perror("Couldn't open input file");
-		return -1;
-	}
-	int num_values;
-	if (EOF == fscanf(file, "%d", &num_values)) {
-		perror("Couldn't read element count from input file");
-		return -1;
-	}
-	if (NULL == (*values = malloc(num_values * sizeof(double)))) {
-		perror("Couldn't allocate memory for input");
-		return -1;
-	}
-	for (int i=0; i<num_values; i++) {
-		if (EOF == fscanf(file, "%lf", &((*values)[i]))) {
-			perror("Couldn't read elements from input file");
-			return -1;
-		}
-	}
-	if (0 != fclose(file)){
-		perror("Warning: couldn't close input file");
-	}
-	return num_values;
-}
-
 
 int write_output(char *file_name, const double *output, int num_values) {
 	FILE *file;
