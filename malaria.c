@@ -31,8 +31,8 @@ int main(int argc, char **argv) {
 
     int n = N/size; //simulations run per process
     int x0 = [900, 900, 30, 330, 50, 270, 20];
-    int x = [0, 0, 0, 0, 0, 0, 0];
-    double w = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    int x[7] = {0};
+    double w[15] = {0};
     int* process_memory = malloc((7*n)*sizeof(double));
     int* collected_data = malloc(20*sizeof(int)); // for collecting the data in the end
 
@@ -140,7 +140,7 @@ int main(int argc, char **argv) {
 	//the same size for the bins
 	MPI_Gather(&local_maxX, 1, MPI_INT, &array_max_X,1, MPI_INT, 0, MPI_COMM_WORLD);
 
-	//finding the global max on root
+	//finding the global max X on root
 	if(rank == 0){
 		for(i = 0; i <size; i++){
 			if(global_max_X <array_max_X[i]){
@@ -149,9 +149,25 @@ int main(int argc, char **argv) {
 		}
 	}
 
+	//broadcasting the global max X found
 	MPI_Bcast(&global_max_X, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
 	//finding the intervalls for the bins
+	int bin_size = global_max_X/20;
+	int local_bins[20] = {0};
+
+	//Going over all the x-values and putting them in the correct bin
+	for(i = 0; i<n; i++){
+		for(int j = 0;j<20;j++){
+			if(bin_size*(j)<all_X0[i] && all_X0[i] <= bin_size*(j+1)){
+				local_bins[j] += 1;
+			}
+		}
+	}
+
+	int global_bins[20] = {0};
+
+	MPI_Reduce(local_bins, global_bins, 20, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
 
 
