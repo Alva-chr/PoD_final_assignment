@@ -34,7 +34,8 @@ int main(int argc, char **argv) {
     int x = [0, 0, 0, 0, 0, 0, 0];
     double w = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     int* process_memory = malloc((7*n)*sizeof(double));
-    int collected_data = malloc((7*n*size)*sizeof(double)); // for collecting the data in the end
+    int* collected_data = malloc(20*sizeof(int)); // for collecting the data in the end
+
     int simulations_done = 0;
 
 	//for time taking
@@ -111,8 +112,49 @@ int main(int argc, char **argv) {
 			//step 6 in SSA
 			t += tau;
         }
+
+		//saving the data in each process 
+		for(i = 0; i <7;i++){
+			int idx = 7*simulations_done + i;
+			process_memory[idx] = x[i]
+		}
+
 		simulations_done +=1;
     }
+
+	//Collecting only the relevant data
+	int local_max_X = 0;
+	int array_max_X[size];
+	int global_max_X = NULL;
+	int *all_X0 = malloc(n*sizeof(int)); 
+	for(i = 0; i<n; i++){
+		idx = 7*i;
+		if(local_max_X < process_memory[idx]){
+			local_max_X = process_memory[idx];
+		}
+
+		all_X0 [i] = process_memory[idx];
+	}
+
+	//Need to determine global max of X so all the proccess have
+	//the same size for the bins
+	MPI_Gather(&local_maxX, 1, MPI_INT, &array_max_X,1, MPI_INT, 0, MPI_COMM_WORLD);
+
+	//finding the global max on root
+	if(rank == 0){
+		for(i = 0; i <size; i++){
+			if(global_max_X <array_max_X[i]){
+				global_max_X = array_max_X[i];
+			}
+		}
+	}
+
+	MPI_Bcast(&global_max_X, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+	//finding the intervalls for the bins
+
+
+
 }
 
 int write_output(char *file_name, const double *output, int num_values) {
