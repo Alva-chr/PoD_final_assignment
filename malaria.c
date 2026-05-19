@@ -7,18 +7,21 @@
 #include "prop.h"
 
 //modified from precvius assignments
-int write_output(char *file_name, const int *output, const int *bin_Sizes, int num_values, int bin_size) {
+int write_output(char *file_name, const int *output, const int *bin_Sizes, const int  num_values, int total_number_simulations) {
 	FILE *file;
 	if (NULL == (file = fopen(file_name, "w"))) {
 		perror("Couldn't open output file");
 		return -1;
 	}
-	for (int i = 0; i < 20; i++) {
+	if (0 > fprintf(file, "%d\n", total_number_simulations)) {
+		perror("Couldn't write to output file");
+	}
+	for (int i = 0; i < num_values; i++) {
 		if (0 > fprintf(file, "%d\n", bin_Sizes[i])) {
 			perror("Couldn't write to output file");
 		}
 	}
-	for (int i = 0; i < num_values; i++) {
+	for (int i = 0; i < 20; i++) {
 		if (0 > fprintf(file, "%d\n", output[i])) {
 			perror("Couldn't write to output file");
 		}
@@ -95,6 +98,7 @@ int main(int argc, char **argv) {
 		{ 0,  0,  0,  0,  0,  0, -1}
 	};
 
+	double start = MPI_Wtime();
     //running all the simulations
     while(simulations_done < n){
 
@@ -183,13 +187,13 @@ int main(int argc, char **argv) {
 		all_X0 [i] = process_memory[idx];
 	}
 
+	
+
 	//finding the minimum and maximum value of X in all process 
 	//and then broadcasting it
-	MPI_Reduce(&local_max_X, &global_max_X,1, MPI_INT, MPI_MAX,0, MPI_COMM_WORLD);
-	MPI_Bcast(&global_max_X, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Allreduce(&local_max_X, &global_max_X,1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 
-	MPI_Reduce(&local_min_X, &global_min_X,1, MPI_INT, MPI_MIN,0, MPI_COMM_WORLD);
-	MPI_Bcast(&global_min_X, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Allreduce(&local_min_X, &global_min_X,1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
 
 
 	//AN OLD SOLUTION, REMOVE BEFORE TURNIN
@@ -246,9 +250,15 @@ int main(int argc, char **argv) {
 
 	MPI_Reduce(local_bins, global_bins, 20, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
+	double my_execution_time = MPI_Wtime() - start;
+	double max_execution_time = 0;
+
+    //Take the slowest execution time
+	MPI_Reduce(&my_execution_time, &max_execution_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
 	if(rank == 0){
-		write_output(output_name, global_bins, bins, 20, bin_size);
+		printf("%f\n", max_execution_time);
+		write_output(output_name, global_bins, bins, 20, N);
 	}
 
 	MPI_Finalize();
@@ -256,4 +266,3 @@ int main(int argc, char **argv) {
 	free(process_memory);
 	free(all_X0);
 }
-
