@@ -16,7 +16,7 @@ int write_output(char *file_name, const int *output, const int *bin_Sizes, const
 	if (0 > fprintf(file, "%d\n", total_number_simulations)) {
 		perror("Couldn't write to output file");
 	}
-	for (int i = 0; i < num_values; i++) {
+	for (int i = 0; i <= num_values; i++) {
 		if (0 > fprintf(file, "%d\n", bin_Sizes[i])) {
 			perror("Couldn't write to output file");
 		}
@@ -51,6 +51,7 @@ int main(int argc, char **argv) {
 	MPI_Init(&argc, &argv);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	MPI_Win win;
 
     if(N%size != 0){
         printf("ERROR: Total number of simulations, %d, must be divisable by the number of process, %d.", N,size);
@@ -64,6 +65,20 @@ int main(int argc, char **argv) {
     int x[7] = {0};
     double w[15] = {0};
     int* process_memory = malloc((7*n)*sizeof(int));
+
+	int timings[4] = {0};
+	int t_count = 0;
+	int* collected_timings;
+
+	MPI_Alloc_mem((4*size*N)*sizeof(int), MPI_INFO_NULL, &collected_timings);
+	MPI_Win_create(collected_timings, size)
+
+	// what im supposed to do
+	//Create window so other processor can see the data
+	// save the timings 
+	// write the timings to the root and with PUT but use lock and unlock
+
+
 
     int simulations_done = 0;
 
@@ -105,6 +120,7 @@ int main(int argc, char **argv) {
 		//resetting simulation
         memcpy(&x, &x0, 7*sizeof(int));
 		t = 0;
+		t_count = 0;
 
 		//time simulations
         //One simulation run
@@ -152,6 +168,10 @@ int main(int argc, char **argv) {
 				x[i] += P[r][i];
 			}
 
+			if((t<25 && t+tau>25)||(t<50 && t+tau>50)||(t<75 && t+tau>75)||(t<100 && t+tau>100)){
+				timings[t_count] = t;
+				t_count ++;
+			}
 			//step 6 in SSA
 			t += tau;
         }
@@ -260,6 +280,9 @@ int main(int argc, char **argv) {
 		printf("%f\n", max_execution_time);
 		write_output(output_name, global_bins, bins, 20, N);
 	}
+
+	MPI_Win_free(&win);
+	MPI_Free_mem(collected_timings);
 
 	MPI_Finalize();
 
