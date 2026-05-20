@@ -14,7 +14,7 @@ make all
 
 # ADDED 16 and 32 to the loop array
 PROCESSES=(1 2 4 8 16 32) 
-NUMBER_OF_SIMULATIONS=(1 2 3 4 5 6 7 8)
+NUMBER_OF_SIMULATIONS=(250000 500000 1000000 2000000 4000000 8000000)
 LOG_FILE="benchmark_results.txt"
 
 # Initialize/Clear the log file
@@ -27,7 +27,7 @@ for ps in "${NUMBER_OF_SIMULATIONS[@]}"; do
         echo "PARAMS: Problem size=$ps, Procs=$np" >> $LOG_FILE
         #I do this for the sake of averaging the results
         for i in {1..5}; do
-            mpirun -n $np ./malaria  $ps  >> $LOG_FILE 2>&1
+            mpirun -n $np --mca osc ^ucx ./malaria  $ps  >> $LOG_FILE 2>&1
         done
         echo "------------------------------------" >> $LOG_FILE
 
