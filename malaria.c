@@ -8,11 +8,12 @@
 
 int main(int argc, char **argv) {
 
-	if (2 != argc) {
+	if (3 != argc) {
 		printf("Usage: total number of simulations run\n");
 		return 1;
 	}
     int N = atoi(argv[1]); //total number of process simulations to run
+	char * output_name = argv[2];
 
     double T = 100; //Timesteps simulation will take
     double t = 0; //start time
@@ -194,8 +195,6 @@ int main(int argc, char **argv) {
 		all_X0 [i] = process_memory[idx];
 	}
 
-	
-
 	//finding the minimum and maximum value of X in all process 
 	MPI_Allreduce(&local_max_X, &global_max_X,1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 	MPI_Allreduce(&local_min_X, &global_min_X,1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
@@ -242,7 +241,7 @@ int main(int argc, char **argv) {
 
 		//outputting the results
 		FILE *file1;
-		file1 = fopen("output.txt", "w");
+		file1 = fopen(output_name, "w");
 		fprintf(file1, "%d\n", N);
 
 		for (int i = 0; i < 21; i++) {

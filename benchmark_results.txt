@@ -1,0 +1,4 @@
+Benchmark Results - Wed May 20 03:11:00 PM CEST 2026
+------------------------------------------------
+PARAMS: Problem size=250000, Procs=1
+495.410283
