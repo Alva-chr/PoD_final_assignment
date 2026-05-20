@@ -6,41 +6,13 @@
 #include <time.h>
 #include "prop.h"
 
-//modified from precvius assignments
-int write_output(char *file_name, const int *output, const int *bin_Sizes, const int  num_values, int total_number_simulations) {
-	FILE *file;
-	if (NULL == (file = fopen(file_name, "w"))) {
-		perror("Couldn't open output file");
-		return -1;
-	}
-	if (0 > fprintf(file, "%d\n", total_number_simulations)) {
-		perror("Couldn't write to output file");
-	}
-	for (int i = 0; i <= num_values; i++) {
-		if (0 > fprintf(file, "%d\n", bin_Sizes[i])) {
-			perror("Couldn't write to output file");
-		}
-	}
-	for (int i = 0; i < 20; i++) {
-		if (0 > fprintf(file, "%d\n", output[i])) {
-			perror("Couldn't write to output file");
-		}
-	}
-	if (0 != fclose(file)) {
-		perror("Warning: couldn't close output file");
-	}
-	return 0;
-}
-
-
 int main(int argc, char **argv) {
 
-	if (3 != argc) {
+	if (2 != argc) {
 		printf("Usage: total number of simulations run\n");
 		return 1;
 	}
     int N = atoi(argv[1]); //total number of process simulations to run
-	char *output_name = "output.txt";
 
     double T = 100; //Timesteps simulation will take
     double t = 0; //start time
@@ -58,7 +30,7 @@ int main(int argc, char **argv) {
         return -1;
     }
 	//setting the random seed
-	srand(time(NULL)+rank);
+	srand(rank);
 
     int n = N/size; //simulations run per process
     int x0[7] = {900, 900, 30, 330, 50, 270, 20};
@@ -66,19 +38,14 @@ int main(int argc, char **argv) {
     double w[15] = {0};
     int* process_memory = malloc((7*n)*sizeof(int));
 
-	int timings[4] = {0};
+	//variables for finding average walltime to 25, 50, 75 and 100 timesteps.
+	double* timings = malloc(4*n*sizeof(double));
+	double average_timings[4] = {0};
 	int t_count = 0;
-	int* collected_timings;
+	double* collected_timings;
 
-	MPI_Alloc_mem((4*size*N)*sizeof(int), MPI_INFO_NULL, &collected_timings);
-	MPI_Win_create(collected_timings, size)
-
-	// what im supposed to do
-	//Create window so other processor can see the data
-	// save the timings 
-	// write the timings to the root and with PUT but use lock and unlock
-
-
+	MPI_Alloc_mem((4*size)*sizeof(double), MPI_INFO_NULL, &collected_timings);
+	MPI_Win_create(collected_timings, 4*size*sizeof(double), sizeof(double), MPI_INFO_NULL, MPI_COMM_WORLD, &win);
 
     int simulations_done = 0;
 
@@ -89,7 +56,6 @@ int main(int argc, char **argv) {
 	int r = 7;
 	int idx;
 	double w_ahead, w_behind;
-
 
 	double a0 = 0;
 
@@ -114,6 +80,8 @@ int main(int argc, char **argv) {
 	};
 
 	double start = MPI_Wtime();
+	double start_partial;
+
     //running all the simulations
     while(simulations_done < n){
 
@@ -122,6 +90,7 @@ int main(int argc, char **argv) {
 		t = 0;
 		t_count = 0;
 
+		start_partial = MPI_Wtime();
 		//time simulations
         //One simulation run
         while(t<T){
@@ -168,8 +137,9 @@ int main(int argc, char **argv) {
 				x[i] += P[r][i];
 			}
 
+			//saving the wall time at the wanted timing intervals
 			if((t<25 && t+tau>25)||(t<50 && t+tau>50)||(t<75 && t+tau>75)||(t<100 && t+tau>100)){
-				timings[t_count] = t;
+				timings[4*simulations_done+t_count] = MPI_Wtime() - start_partial;
 				t_count ++;
 			}
 			//step 6 in SSA
@@ -185,7 +155,24 @@ int main(int argc, char **argv) {
 		simulations_done +=1;
     }
 
-	//Collecting only the relevant data
+	//finding the sum of the wall time
+	for(i = 0; i <n;i++){
+		for (int j=0;j<4;j++){
+			average_timings[j] += timings[4*i+j];
+		}
+	}
+
+	//finding the average
+	for(i = 0; i<4; i++){
+		average_timings[i] /= n;
+	}
+
+	//Using Put/get functionality to save the timings on the root process.
+	MPI_Win_lock(MPI_LOCK_EXCLUSIVE, 0, 0,win);
+		MPI_Put(&average_timings, 4, MPI_DOUBLE, 0, 4*rank, 4, MPI_DOUBLE,win);
+	MPI_Win_unlock(0, win);
+
+	//Finding the higest value and lowest value of X so all processors have the same size for the bins in the histogram
 	int local_max_X = process_memory[0];
 	int global_max_X = 0;
 
@@ -210,34 +197,11 @@ int main(int argc, char **argv) {
 	
 
 	//finding the minimum and maximum value of X in all process 
-	//and then broadcasting it
 	MPI_Allreduce(&local_max_X, &global_max_X,1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-
 	MPI_Allreduce(&local_min_X, &global_min_X,1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
 
-
-	//AN OLD SOLUTION, REMOVE BEFORE TURNIN
-	// //Need to determine global max of X so all the proccess have
-	// //the same size for the bins
-	// MPI_Gather(&local_max_X, 1, MPI_INT, &array_max_X,1, MPI_INT, 0, MPI_COMM_WORLD);
-
-	// //finding the global max X on root
-	// if(rank == 0){
-	// 	for(i = 0; i <size; i++){
-	// 		if(global_max_X <array_max_X[i]){
-	// 			global_max_X = array_max_X[i];
-	// 		}
-	// 	}
-	// }
-
-	// //broadcasting the global max X found
-	// MPI_Bcast(&global_max_X, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
 	//finding the intervalls for the bins
-	// printf("global max X: %d\n",global_max_X);
-	// printf("global min X: %d\n", global_min_X);
 	int bin_size = (global_max_X-global_min_X)/20;
-	// printf("rank %d has bin size of %d\n", rank, bin_size);
 	int bins[21] = {0};
 	bins[0] = global_min_X;
 	bins[20] = global_max_X;
@@ -250,23 +214,17 @@ int main(int argc, char **argv) {
 	//Going over all the x-values and putting them in the correct bin
 	for(i = 0; i<n; i++){
 		for(int j = 0;j<20;j++){
-			//printf("x0 värden: %d\n", all_X0[i]);
-			if(bins[j]>all_X0[i] && all_X0[i] <= bins[j+1]){
+			if(bins[j]<=all_X0[i] && all_X0[i] < bins[j+1]){
 				local_bins[j] += 1;
 				break;
-				// if(rank==0){
-				//    printf("local bins value: %d\n", local_bins[j]);
-				// }
+			}
+			else if(j==19 && all_X0[i] == bins[20]){
+				local_bins[j] += 1;
 			}
 		}
 	}
 
 	int global_bins[20] = {0};
-	// if(rank == 1){
-	// 	for(int i = 0; i <20; i++){
-	// 		printf("%d\n", local_bins[i]);
-	// 	}
-	// }
 
 	MPI_Reduce(local_bins, global_bins, 20, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
@@ -276,9 +234,39 @@ int main(int argc, char **argv) {
     //Take the slowest execution time
 	MPI_Reduce(&my_execution_time, &max_execution_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
+	//writing out to the output files
+	//one output file for the results
+	//one output file for the average time per processor for each time sub-interval
 	if(rank == 0){
 		printf("%f\n", max_execution_time);
-		write_output(output_name, global_bins, bins, 20, N);
+
+		//outputting the results
+		FILE *file1;
+		file1 = fopen("output.txt", "w");
+		fprintf(file1, "%d\n", N);
+
+		for (int i = 0; i < 21; i++) {
+			fprintf(file1, "%d\n", bins[i]);
+		}
+		for (int i = 0; i < 20; i++) {
+			fprintf(file1, "%d\n", global_bins[i]);
+		}
+		fclose(file1);
+
+
+		//outputting the the average time per processor for each time sub-interval
+		FILE *file2;
+		file2 = fopen("processor_timings.txt", "w");
+
+		for (int i = 0; i < size; i++) {
+			fprintf(file2, "%d ", i);
+
+			for(int j = 0; j<4;j++){
+				fprintf(file2, "%f ", collected_timings[4*i+j]);
+			}
+			fprintf(file2, "\n");
+		}
+		fclose(file2);
 	}
 
 	MPI_Win_free(&win);

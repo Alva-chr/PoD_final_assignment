@@ -13,7 +13,7 @@ make all
 
 
 # ADDED 16 and 32 to the loop array
-PROCESSES=(1 2 4 8 16 32 64) 
+PROCESSES=(1 2 4 8 16 32) 
 NUMBER_OF_SIMULATIONS=(1 2 3 4 5 6 7 8)
 LOG_FILE="benchmark_results.txt"
 
