@@ -1,0 +1,3 @@
+make: Nothing to be done for 'all'.
+  Running with 8 processes, problem size = 1000000...
+Benchmarks complete. Results saved to forProcess.txt

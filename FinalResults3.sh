@@ -4,7 +4,7 @@
 #SBATCH --ntasks=32             # INCREASED: Max MPI tasks needed for the job
 #SBATCH --ntasks-per-node=32    # INCREASED: MPI tasks per node
 #SBATCH --cpus-per-task=1
-#SBATCH -t 20:00:00             # Time limit (hh:mm:ss)
+#SBATCH -t 12:00:00             # Time limit (hh:mm:ss)
 
 module load OpenMPI/5.0.8-GCC-14.3.0
 
@@ -12,9 +12,9 @@ make all
 
 
 # ADDED 16 and 32 to the loop array
-PROCESSES=(2 4 8 16 32) 
-NUMBER_OF_SIMULATIONS=(2000000)
-LOG_FILE="benchmark_results.txt"
+PROCESSES=(8 16) 
+NUMBER_OF_SIMULATIONS=(4000000)
+LOG_FILE="benchmark_results3_8_16.txt"
 
 # Initialize/Clear the log file
 echo "Benchmark Results - $(date)" > $LOG_FILE

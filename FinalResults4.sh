@@ -13,8 +13,8 @@ make all
 
 # ADDED 16 and 32 to the loop array
 PROCESSES=(2 4 8 16 32) 
-NUMBER_OF_SIMULATIONS=(2000000)
-LOG_FILE="benchmark_results.txt"
+NUMBER_OF_SIMULATIONS=(8000000)
+LOG_FILE="benchmark_results4.txt"
 
 # Initialize/Clear the log file
 echo "Benchmark Results - $(date)" > $LOG_FILE
